@@ -1,1 +1,2 @@
 COMPONENT_EMBED_FILES := playlist.pls
+COMPONENT_EMBED_FILES := sound.wav

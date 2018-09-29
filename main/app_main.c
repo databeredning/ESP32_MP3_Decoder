@@ -22,6 +22,7 @@
 #include "playerconfig.h"
 #include "wifi.h"
 #include "app_main.h"
+#include "bt_main.h"
 #ifdef CONFIG_BT_SPEAKER_MODE
 #include "bt_speaker.h"
 #endif
@@ -134,8 +135,9 @@ void app_main()
 #ifdef CONFIG_BT_SPEAKER_MODE
     bt_speaker_start(create_renderer_config());
 #else
-    start_wifi();
-    start_web_radio();
+    //start_wifi();
+    //start_web_radio();
+    start_bt_main();
 #endif
 
     ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
