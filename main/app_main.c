@@ -27,6 +27,7 @@
 #include "bt_speaker.h"
 #endif
 #include "playlist.h"
+#include "bt_a2dp_source.h"
 
 
 #define WIFI_LIST_NUM   10
@@ -137,7 +138,7 @@ void app_main()
 #else
     start_wifi();
     start_web_radio();
-    start_bt_main();
+    start_a2dp_source();
 #endif
 
     ESP_LOGI(TAG, "All done RAM left %d", esp_get_free_heap_size());

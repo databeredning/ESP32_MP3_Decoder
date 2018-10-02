@@ -106,7 +106,7 @@ static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
     return str;
 }
 
-void start_bt_main(void)
+void start_a2dp_source(void)
 {
 /*
     samples = wav_start - wav_end;
