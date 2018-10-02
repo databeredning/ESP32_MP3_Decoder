@@ -135,11 +135,11 @@ void app_main()
 #ifdef CONFIG_BT_SPEAKER_MODE
     bt_speaker_start(create_renderer_config());
 #else
-    //start_wifi();
-    //start_web_radio();
+    start_wifi();
+    start_web_radio();
     start_bt_main();
 #endif
 
-    ESP_LOGI(TAG, "RAM left %d", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "All done RAM left %d", esp_get_free_heap_size());
     // ESP_LOGI(TAG, "app_main stack: %d\n", uxTaskGetStackHighWaterMark(NULL));
 }

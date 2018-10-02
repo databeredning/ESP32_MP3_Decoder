@@ -89,8 +89,10 @@ const int16_t *samples_buf;
 unsigned int si;
 const int16_t *sp;
 
+/*
 extern const int16_t wav_start[] asm("_binary_sound_wav_start");
 extern const int16_t wav_end[]   asm("_binary_sound_wav_end");
+*/
 
 static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
 {
@@ -106,11 +108,12 @@ static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
 
 void start_bt_main(void)
 {
+/*
     samples = wav_start - wav_end;
     samples_buf = wav_start;
     sp = samples_buf;
     si = 0;
-
+*/
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
 
     if (esp_bt_controller_init(&bt_cfg) != ESP_OK) {
@@ -122,7 +125,8 @@ void start_bt_main(void)
         ESP_LOGE(BT_AV_TAG, "%s enable controller failed\n", __func__);
         return;
     }
-
+    ESP_LOGI(BT_AV_TAG, "RAM left %d", esp_get_free_heap_size());
+#if 1
     if (esp_bluedroid_init() != ESP_OK) {
         ESP_LOGE(BT_AV_TAG, "%s initialize bluedroid failed\n", __func__);
         return;
@@ -138,7 +142,7 @@ void start_bt_main(void)
 
     /* Bluetooth device name, connection mode and profile set up */
     bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
-
+#endif
 }
 
 static bool get_name_from_eir(uint8_t *eir, uint8_t *bdname, uint8_t *bdname_len)
@@ -208,26 +212,32 @@ static void filter_inquiry_scan_result(esp_bt_gap_cb_param_t *param)
         }
     }
 
-    /* search for device with MAJOR service class as "rendering" in COD */
-    if (!esp_bt_gap_is_valid_cod(cod) ||
-            !(esp_bt_gap_get_cod_srvc(cod) & ESP_BT_COD_SRVC_RENDERING)) {
-//        return;
-    }
+    if(esp_bt_gap_is_valid_cod(cod))
+    {
+      uint32_t cod_srvc_bits;
 
-    /* search for device named "ESP_SPEAKER" in its extended inqury response */
-    if (eir) {
+      cod_srvc_bits = esp_bt_gap_get_cod_srvc(cod);
+      if(eir)
+      {
         get_name_from_eir(eir, peer_bdname, NULL);
-       if (strcmp((char *)peer_bdname, "Per’s MacBook Pro") != 0) {
-       // if (strcmp((char *)peer_bdname, "Bose Mini Sou") != 0) {
-        // if (strcmp((char *)peer_bdname, "HD 4.50BTNC") != 0) {
-            return;
-        }
+        ESP_LOGI(BT_AV_TAG, "Found a target device, address %s, name %s, servicebits %04X", bda_str, peer_bdname, cod_srvc_bits);
+      }
 
-        ESP_LOGI(BT_AV_TAG, "Found a target device, address %s, name %s", bda_str, peer_bdname);
+//"Bose Mini Sou"
+//"HD 4.50BTNC"
+//      if(strcmp((char *)peer_bdname, "BHS3.1"))
+//      if(strcmp((char *)peer_bdname, "HD 4.50BTNC"))
+      if(strcmp((char *)peer_bdname, "Bose Mini Sou") &&
+         strcmp((char *)peer_bdname, "BHS3.1"))
+        return;
+
+      if(eir && (cod_srvc_bits & (ESP_BT_COD_SRVC_RENDERING|ESP_BT_COD_SRVC_AUDIO)))
+      {
         m_a2d_state = APP_AV_STATE_DISCOVERED;
         memcpy(peer_bda, param->disc_res.bda, ESP_BD_ADDR_LEN);
         ESP_LOGI(BT_AV_TAG, "Cancel device discovery ...");
         esp_bt_gap_cancel_discovery();
+      }
     }
 }
 
@@ -323,6 +333,19 @@ static void bt_app_a2d_cb(esp_a2d_cb_event_t event, esp_a2d_cb_param_t *param)
 
 static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
 {
+    if (len < 0 || data == NULL) {
+        return 0;
+    }
+
+    // generate random sequence
+    int val = rand() % (1 << 16);
+    for (int i = 0; i < (len >> 1); i++) {
+        data[(i << 1)] = val & 0xff;
+        data[(i << 1) + 1] = (val >> 8) & 0xff;
+    }
+
+  //ESP_LOGI("DEBUG","bt_app_a2d_data_cb");
+/*
   int16_t val;
 
   if (len < 0 || data == NULL)
@@ -340,9 +363,8 @@ static int32_t bt_app_a2d_data_cb(uint8_t *data, int32_t len)
 
     data[(i << 1)] = val & 0xff;
     data[(i << 1) + 1] = (val >> 8) & 0xff;
-    //ESP_LOGI("DEBUG","i = %d, i << 1 = %d, sample played = %02X val = %d",i, (i<<1),(int16_t)*sp,val);
   }
-
+*/
   return len;
 }
 

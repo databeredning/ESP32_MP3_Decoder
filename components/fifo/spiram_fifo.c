@@ -40,7 +40,7 @@ static long fifoOvfCnt, fifoUdrCnt;
 //Re-define a bunch of things so we use the internal buffer
 #undef SPIRAMSIZE
 //allocate enough for about one mp3 frame
-#define SPIRAMSIZE 4096
+#define SPIRAMSIZE 1850
 //#define SPIRAMSIZE 1850
 //#define SPIRAMSIZE 32000
 static char fakespiram[SPIRAMSIZE];
