@@ -13,6 +13,7 @@
 #include "esp_system.h"
 #include "string.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -40,10 +41,11 @@ static long fifoOvfCnt, fifoUdrCnt;
 //Re-define a bunch of things so we use the internal buffer
 #undef SPIRAMSIZE
 //allocate enough for about one mp3 frame
-#define SPIRAMSIZE 1850
 //#define SPIRAMSIZE 1850
 //#define SPIRAMSIZE 32000
-static char fakespiram[SPIRAMSIZE];
+#define SPIRAMSIZE 32768
+//static char fakespiram[SPIRAMSIZE];
+char *fakespiram;
 #define spiRamInit() while(0)
 #define spiRamTest() 1
 #define spiRamWrite(pos, buf, n) memcpy(&fakespiram[pos], buf, n)
@@ -52,6 +54,7 @@ static char fakespiram[SPIRAMSIZE];
 
 //Initialize the FIFO
 int spiRamFifoInit() {
+  fakespiram = (char *)malloc(sizeof(char)*SPIRAMSIZE);
 	fifoRpos=0;
 	fifoWpos=0;
 	fifoFill=0;

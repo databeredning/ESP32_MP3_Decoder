@@ -13,6 +13,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/timers.h"
+#include "freertos/event_groups.h"
+
+
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "esp_system.h"
@@ -25,6 +28,7 @@
 #include "esp_gap_bt_api.h"
 #include "esp_a2dp_api.h"
 #include "esp_avrc_api.h"
+#include "common_buffer.h"
 
 #define BT_AV_TAG               "BT_AV"
 
@@ -84,10 +88,32 @@ static uint32_t m_pkt_cnt = 0;
 
 TimerHandle_t tmr;
 
+/*
 unsigned int samples;
 const int16_t *samples_buf;
 unsigned int si;
 const int16_t *sp;
+*/
+/*
+typedef struct {
+  int16_t *raw_buf;
+  int16_t *write_pos;
+  int16_t *read_pos;
+} db_ringbuf_t;
+
+static db_ringbuf_t ringbuf;
+*/
+
+// The theoretical maximum frame size is 2881 bytes,
+// MPEG 2.5 Layer II, 8000 Hz @ 160 kbps, with a padding slot plus 8 byte MAD_BUFFER_GUARD.
+#define MAX_FRAME_SIZE (2889)
+
+// The theoretical minimum frame size of 24 plus 8 byte MAD_BUFFER_GUARD.
+#define MIN_FRAME_SIZE (32)
+
+buffer_t *ringbuf;
+
+extern EventGroupHandle_t bt_event_group;
 
 /*
 extern const int16_t wav_start[] asm("_binary_sound_wav_start");
@@ -106,14 +132,18 @@ static char *bda2str(esp_bd_addr_t bda, char *str, size_t size)
     return str;
 }
 
-void start_a2dp_source(void)
+static esp_err_t init_ringbuffer(void)
 {
-/*
-    samples = wav_start - wav_end;
-    samples_buf = wav_start;
-    sp = samples_buf;
-    si = 0;
-*/
+  ringbuf = buf_create(512);
+
+  if(ringbuf == NULL)
+    return ESP_FAIL;
+  else
+    return ESP_OK;
+}
+
+void initialise_bt_a2dp_source(void)
+{
     esp_bt_controller_config_t bt_cfg = BT_CONTROLLER_INIT_CONFIG_DEFAULT();
 
     if (esp_bt_controller_init(&bt_cfg) != ESP_OK) {
@@ -125,8 +155,8 @@ void start_a2dp_source(void)
         ESP_LOGE(BT_AV_TAG, "%s enable controller failed\n", __func__);
         return;
     }
-    ESP_LOGI(BT_AV_TAG, "RAM left %d", esp_get_free_heap_size());
-#if 1
+     ESP_LOGI(BT_AV_TAG, "RAM left %d", esp_get_free_heap_size());
+
     if (esp_bluedroid_init() != ESP_OK) {
         ESP_LOGE(BT_AV_TAG, "%s initialize bluedroid failed\n", __func__);
         return;
@@ -137,12 +167,19 @@ void start_a2dp_source(void)
         return;
     }
 
+    /* create ringbuffer for samples */
+    if(init_ringbuffer() != ESP_OK) {
+        ESP_LOGE(BT_AV_TAG, "%s out of memory\n", __func__);
+        return;
+    }
+
+
     /* create application task */
     bt_app_task_start_up();
 
     /* Bluetooth device name, connection mode and profile set up */
     bt_app_work_dispatch(bt_av_hdl_stack_evt, BT_APP_EVT_STACK_UP, NULL, 0, NULL);
-#endif
+
 }
 
 static bool get_name_from_eir(uint8_t *eir, uint8_t *bdname, uint8_t *bdname_len)
@@ -421,6 +458,8 @@ static void bt_app_av_state_unconnected(uint16_t event, void *param)
     }
 }
 
+const int BT_CONNECTED_BIT = 0x00000001;
+
 static void bt_app_av_state_connecting(uint16_t event, void *param)
 {
     esp_a2d_cb_param_t *a2d = NULL;
@@ -432,6 +471,8 @@ static void bt_app_av_state_connecting(uint16_t event, void *param)
             m_a2d_state =  APP_AV_STATE_CONNECTED;
             m_media_state = APP_AV_MEDIA_STATE_IDLE;
             esp_bt_gap_set_scan_mode(ESP_BT_SCAN_MODE_NONE);
+            xEventGroupSetBits(bt_event_group, BT_CONNECTED_BIT);
+
         } else if (a2d->conn_stat.state == ESP_A2D_CONNECTION_STATE_DISCONNECTED) {
             m_a2d_state =  APP_AV_STATE_UNCONNECTED;
         }

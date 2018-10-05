@@ -41,7 +41,7 @@ static int start_decoder_task(player_t *player)
             task_name = "mp3_decoder_task";
             stack_depth = 8448;
             break;
-
+#if 0
         case AUDIO_MP4:
             task_func = libfaac_decoder_task;
             task_name = "libfaac_decoder_task";
@@ -54,7 +54,7 @@ static int start_decoder_task(player_t *player)
             task_name = "fdkaac_decoder_task";
             stack_depth = 6144;
             break;
-
+#endif
         default:
             ESP_LOGE(TAG, "unknown mime type: %d", player->media_stream->content_type);
             return -1;
@@ -146,4 +146,3 @@ component_status_t get_player_status()
 {
     return player_status;
 }
-

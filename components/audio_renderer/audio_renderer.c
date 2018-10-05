@@ -180,6 +180,16 @@ void render_samples(char *buf, uint32_t buf_len, pcm_format_t *buf_desc)
             sample = (sample << 16 & 0xffff0000) | ((uint16_t) right);
             i2s_write(renderer_instance->i2s_num, (const void*) &sample, sizeof(sample), &bytes_pushed, max_wait);
         }
+        else if(renderer_instance->output_mode == A2DP_SOURCE)
+        {
+            // assume 16 bit src bit_depth
+            short left = *(short *) ptr_l;
+            short right = *(short *) ptr_r;
+
+            uint32_t sample = (uint16_t) left;
+            sample = (sample << 16 & 0xffff0000) | ((uint16_t) right);
+            // Write to ringbuffer
+        }
         else {
 
             switch (renderer_instance->bit_depth)
@@ -258,6 +268,7 @@ void renderer_start()
         return;
 
     renderer_status = RUNNING;
+
     i2s_start(renderer_instance->i2s_num);
 
     // buffer might contain noise
@@ -270,12 +281,13 @@ void renderer_stop()
         return;
 
     renderer_status = STOPPED;
+
     i2s_stop(renderer_instance->i2s_num);
 }
 
 void renderer_destroy()
 {
     renderer_status = UNINITIALIZED;
+
     i2s_driver_uninstall(renderer_instance->i2s_num);
 }
-

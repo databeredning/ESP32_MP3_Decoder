@@ -27,7 +27,7 @@
 #include "bt_speaker.h"
 #endif
 #include "playlist.h"
-#include "bt_a2dp_source.h"
+#include "bt_source.h"
 
 
 #define WIFI_LIST_NUM   10
@@ -41,7 +41,7 @@
 #define PRIO_MQTT configMAX_PRIORITIES - 3
 #define PRIO_CONNECT configMAX_PRIORITIES -1
 
-
+EventGroupHandle_t bt_event_group;
 
 static void init_hardware()
 {
@@ -58,6 +58,18 @@ static void init_hardware()
     }
 
     ESP_LOGI(TAG, "hardware initialized");
+}
+static void start_a2dp_source()
+{
+    bt_event_group = xEventGroupCreate();
+
+    ESP_LOGI(TAG, "starting bt_a2dp_source");
+
+    initialise_bt_a2dp_source();
+    /* Wait for the callback to set the CONNECTED_BIT in the event group. */
+    xEventGroupWaitBits(bt_event_group, BT_CONNECTED_BIT, false, true, portMAX_DELAY);
+    ESP_LOGI(TAG, "connected bt_a2dp_source");
+
 }
 
 static void start_wifi()
@@ -136,9 +148,16 @@ void app_main()
 #ifdef CONFIG_BT_SPEAKER_MODE
     bt_speaker_start(create_renderer_config());
 #else
-    start_wifi();
-    start_web_radio();
+    ESP_LOGI(TAG, "start_a2dp_source()");
     start_a2dp_source();
+
+    ESP_LOGI(TAG, "RAM left: %u", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "start_wifi()");
+    start_wifi();
+
+    ESP_LOGI(TAG, "RAM left: %u", esp_get_free_heap_size());
+    ESP_LOGI(TAG, "start_web_radio()");
+    start_web_radio();
 #endif
 
     ESP_LOGI(TAG, "All done RAM left %d", esp_get_free_heap_size());
